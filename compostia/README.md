@@ -1,4 +1,4 @@
-# compostia
+# compostIA
 
 ## Project setup
 ```
