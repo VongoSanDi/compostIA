@@ -5,6 +5,8 @@ const https = require('https')
 const mysql = require('mysql')
 const path = require('path');
 
+var cors = require('cors')
+
 
 const TWO_HOURS = 1000 * 60 * 60 * 2;
 
@@ -17,30 +19,68 @@ const {
 
 const app = express()
 
-app.use(bodyParser.urlencoded({extended: true}))
+app.use(bodyParser.urlencoded({extended: false}))
+app.use(bodyParser.json())
 
-app.use(express.static(__dirname + '../compostia/public'));
+app.use(express.static(path.join(__dirname, '../compostia/dist')));
 
+
+app.use(cors())
 app.set('trust proxy', true)
 
 /*************  GET  **************/
 
 app.get('/', (req,res) => {
+    console.log('/');
     //console.log(path.join(__dirname, '../compostia/public/index.html'));
-    res.sendFile(path.join(__dirname, '../compostia/public/index.html'));
+    res.sendFile(path.join(__dirname, '../compostia/build/index.html'));
 })
 
 app.get('/help',  (req,res) => {
+    console.log('/help');
     res.send(`
     <h3>Liste des url valides :</h3> 
     <a href='/liste_adresses?page=1&itemPerPage=20'>get/liste_adresses</a> <pre>récupérer la liste de toutes les adresses (+nom) avec pagination</pre><br>
     <a href='/geo_json_all'>get/geo_json_all</a><pre>récupérer un tableau avec toutes les coordonnées (x,y) de tous les composteurs de "Quartiers"</pre><br>
-    <form action='/geo_json_by_name' method='post'>post/geo_json_by_name : <input type="text" name="nom" placeholder="nom" value="Jardin des Emmeraudes"><input type="submit" value="ok"> <pre>récupérer les coordonnées d'un composteur, en foncction de son nom</pre></form>
+    <form action='/login' method='post'>post/login : 
+        <input type="email" name="email" placeholder="email" value="jean.dupont@gmail.com">
+        <input type="text" name="password" placeholder="password" value="Testing123">
+        <input type="submit" value="ok">
+    </form>
+    <a href='/liste_communes'>get/liste_communes</a><pre>La liste des communes et arrondissement de lyon</pre><br>
     `)
     
 })
 
+//retourne un tableau avec toutes les communes de grand lyon et arrondissements de lyon
+app.get('/api/liste_communes', async (req,res) => {
+    console.log('/liste_communes');
+    var options = [
+        {
+            host: 'download.data.grandlyon.com',
+            path: `/ws/grandlyon/adr_voie_lieu.adrarrond/all.json`
+        },
+        {
+            host: 'download.data.grandlyon.com',
+            path: `/ws/grandlyon/adr_voie_lieu.adrcomgl/all.json`
+        }
+    ]
+    var data = []
+    var tabRes = []
+    data.push(JSON.parse(await getFromGrandLyonAPI(options[0])).values)
+    data.push(JSON.parse(await getFromGrandLyonAPI(options[1])).values)
+    data.forEach(element1 => {
+        element1.forEach(element2 => {
+            tabRes.push({"nom":element2.nom,"insee":element2.insee})
+        })
+    })
+    console.log('tabRes', tabRes)
+    res.send(tabRes)
+})
+
+
 app.get('/liste_adresses', async (req,res) => {
+    console.log('/liste_adresses');
     const { page='1', itemPerPage='20' } = req.query;
     const iPage = parseInt(page,10);
     const iItemPerPage = parseInt(itemPerPage,10);
@@ -54,8 +94,8 @@ app.get('/liste_adresses', async (req,res) => {
 })
 
 app.post('/geo_json_by_name', async (req,res) => {
+    console.log('/geo_json_by_name');
     const { nom } = req.body;
-    console.log(nom,encodeURI(nom));
     if(nom != ''){
         var options = {
             host: 'download.data.grandlyon.com',
@@ -67,6 +107,7 @@ app.post('/geo_json_by_name', async (req,res) => {
 })
 
 app.get('/geo_json_all', async (req,res) => {
+    console.log('/geo_json_all');
     var options = {
         host: 'download.data.grandlyon.com',
         path: `/wfs/grandlyon?SERVICE=WFS&VERSION=2.0.0&request=GetFeature&typename=gip_proprete.gipcomposteur_latest&outputFormat=application/json;%20subtype=geojson&SRSNAME=EPSG:4171&filter=Filter=%3CFilter%3E%20%3CPropertyIsLike%20wildcard=%22*%22%20singleChar=%27.%27%20escape=%27_%27%3E%20%3CPropertyName%3Etypesite%3C/PropertyName%3E%3CLiteral%3EQuartier%3C/Literal%3E%3C/PropertyIsLike%3E%20%3C/Filter%3E`
@@ -80,25 +121,53 @@ app.get('/geo_json_all', async (req,res) => {
 })
 
 
-/********  SIGN UP  *********/
+/********  REGISTER  *********/
 
-app.post('/signup', (req, res) =>{
-    const { profil, codeMairie, arrondissement, nom, prenom, email, password, sexe } = req.body
-    if((username == correctUser.name) && (password == correctUser.password)){
-        return true;
-    }else{
-        return false;
-    }
+app.post('/register', (req, res) =>{
+    console.log(req.body)
+    //const { , codeMairie, arrondissement, nom, prenom, email, password } = req.body
 })
 
-/********  SIGN IN  *********/
+/********  LOGIN  *********/
 
-app.post('/signin', (req, res) =>{
-    const { username, password } = req.body
-    if((username == correctUser.name) && (password == correctUser.password)){
-        return true;
+app.post('/login', (req, res) =>{
+    console.log('/login');
+    console.log('req', req)
+    const { email, password } = req.body
+    console.log({ email, password });
+    if((email != undefined)||(password != undefined)){
+        new Promise(function(resolve,reject){
+            let mySqlClient = createConnection(mysql);
+            let selectQuery = `CALL Connect_Uti('${escape(email)}','${escape(password)}')`;
+            console.log(selectQuery)
+            mySqlClient.query(      //execution de la requête
+                selectQuery,
+                function select(error, results) {
+                    if (error) {                                //ERROR
+                        console.log('error SQL :',error);
+                        mySqlClient.end();
+                        reject(error,selectQuery)
+                    }
+                    if ( results.length > 0 )  {
+                        resolve(results[0])
+                    } else {
+                        reject("Pas de donnée ",selectQuery)
+                    }
+                    mySqlClient.end();
+                }
+            );
+        }).then(function(result){
+            if(result[0].res == 1){
+                res.send(true)
+            }else{
+                res.send(false)
+            }
+        }).catch(function(error,selectQuery){
+            console.log(error,selectQuery);
+            res.send(false)
+        })
     }else{
-        return false;
+        res.send(false)
     }
 })
 
@@ -132,13 +201,20 @@ function getFromGrandLyonAPI(options){
     })
 }
 
-/*
+
 function createConnection(){
-    return new Sequelize('breqsvuxjx8beci0', 'a828s15r67nr68up', 'axkf094sdt59jgn8', {
-        host: "sabaik6fx8he7pua.chr7pe7iynqr.eu-west-1.rds.amazonaws.com",
-        dialect: 'mysql'
-    })
+    return mySqlClient = mysql.createConnection({
+        host     : "sabaik6fx8he7pua.chr7pe7iynqr.eu-west-1.rds.amazonaws.com",
+        user     : "a828s15r67nr68up",
+        password : "axkf094sdt59jgn8",
+        database : "breqsvuxjx8beci0"
+    });
 }
+
+function escape(str){
+    return str.replace(/'|\\'/g, "\\'")
+}
+/*
 
 async function tryConnect(sequelize){
     try {

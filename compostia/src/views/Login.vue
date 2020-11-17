@@ -9,22 +9,25 @@
     ref="form"
     v-model="valid"
     class="text-center"
-    method="POST"
-    @submit.prevent
   >
+   {{"jean.dupont@gmail.com"}}
+   {{"Testing123"}}
     <v-text-field
       v-model="email"
       :rules="emailRules"
       label="E-mail"
+      id="email"
       required
     ></v-text-field>
     <v-text-field
        v-model="password"
+       name="password"
        :append-icon="show1 ? 'mdi-eye' : 'mdi-eye-off'"
-       :rules="[passwordRules.required,passwordRules.min]"
+       :rules="[passwordRules.required]"
        :type="show1 ? 'text' : 'password'"
        label="Mot de passe"
        @click:append="show1 = !show1"
+       id="password"
        required
     ></v-text-field>
     <v-btn
@@ -44,7 +47,6 @@
       :to="{name: 'Register'}"
       >Register
       </v-btn></div>
-
 
   </v-col>
   </v-row> 
@@ -71,15 +73,16 @@ import { loginUser } from '../services/LoginService'
       passwordRules() {
         return {
           required: value => !!value || 'Requis.',
-          min: v => v.length >= 8 || '8 caractères minimum'
+          //min: v => v.length >= 8 || '8 caractères minimum'
         }
       }
     },
     methods: {
-      submit () {
+      async submit () {
         const data = { email: this.email, password: this.password }
-        this.$refs.form.validate()
-        loginUser(data);
+        //this.$refs.form.validate()
+        const reponse = await loginUser(data);
+        console.log("submit", reponse);
         
       }
     },

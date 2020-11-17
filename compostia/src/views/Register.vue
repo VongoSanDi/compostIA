@@ -11,11 +11,11 @@
             mandatory>
             <v-radio
               label="Particulier"
-              value="radio-1"
+              value="particulier"
             ></v-radio>
             <v-radio
               label="Collectivité"
-              value="radio-2"
+              value="collectivite"
             ></v-radio>
           </v-radio-group>
           <v-text-field
@@ -31,18 +31,24 @@
             required
           ></v-text-field>
           <v-text-field
-            v-if="radioGroupTypeProfil == 'radio-2'"
+            v-if="radioGroupTypeProfil == 'collectivite'"
             v-model="codeMairie"
             :rules="ruleCodeMairie"
             label="Code d'inscription"
             required
           ></v-text-field>
           <v-select
-            v-if="radioGroupTypeProfil == 'radio-2'"
+            v-model="mairieSelected"
+            v-if="radioGroupTypeProfil == 'collectivite'"
             :items="listeMairies"
+            item-text="nom"
+            item-value="insee"
             :rules="ruleMairie"
             label="Mairie"
+            return-object
+            cache-items
             required
+            @click="getListeMairies"
           ></v-select>
           <v-text-field
             v-model="email"
@@ -65,21 +71,23 @@
             required
           ></v-text-field>
           <v-btn
-          :disabled="!valid"
-          @click="register"
-          >S'inscrire</v-btn>
+            :disabled="!valid"
+            @click="register">
+            S'inscrire
+          </v-btn>
         </v-form>
         <v-btn
-        @click="getListeMairies">
-        coucou</v-btn>
+          :to="{name: 'Dashboard'}"
+        >
+        Dashboard
+        </v-btn>
       </v-col>
     </v-row>
   </v-container>
 </template>
 
 <script>
-import { mapActions } from 'vuex'
-import { getAllMairies } from '../services/RegisterService'
+import { getAllMairies, postInscription } from '../services/RegisterService'
 export default {
   name: 'Register',
   data: () => ({
@@ -90,7 +98,9 @@ export default {
     email: null,
     motDePasse: null,
     confirmerMotDePasse: null,
-    listeMairies: []
+    listeMairies: [],
+    codeMairie: null,
+    mairieSelected: null
   }),
   computed: {
     ruleIdentite() {
@@ -113,7 +123,12 @@ export default {
     },
     ruleMairie() {
       return [
-        v => !!v || "Vous devez sélectionner au moins une mairie"
+        v => !!v ||"Vous devez sélectionner au moins une mairie"
+      ]
+    },
+    ruleCodeMairie() {
+      return [
+        v => !!v ||"Champ obligatoire"
       ]
     }
   },
@@ -124,7 +139,18 @@ export default {
     },
     async getListeMairies () {
       const reponse = await getAllMairies()
-      alert(reponse)
+      console.log("reponse getListeMairies", reponse)
+      this.listeMairies = reponse.data 
+    },
+    async inscription() {
+      const user = {
+        typeutilisateur: this.radioGroupTypeProfil,
+        nom: this.nom,
+        prenom: this.prenom,
+        motDePasse: this.motDePasse,
+        mairie: this.mairieSelected ? this.mairieSelected : null
+      }
+      const reponse = await postInscription(user)
     }
   }
 }
