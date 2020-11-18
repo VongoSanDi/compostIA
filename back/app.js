@@ -60,9 +60,16 @@ app.get('/help',  (req,res) => {
         <input type="email" name="email" placeholder="email" value="jean.dupont@gmail.com">
         <input type="text" name="password" placeholder="password" value="Testing123">
         <input type="submit" value="ok">
+        <pre>Retourne true si l'utilisateur est connecté</pre>
     </form>
     <a href='/liste_communes'>get/liste_communes</a><pre>La liste des communes et arrondissement de lyon</pre><br>
     <a href='/qr_code?email=andres@a.com'>get/qr_code</a><pre>récupérer le qrcode d'un utilisateur via son email</pre><br>
+    <a href='/points?email=a@dsf.co'>get/points</a><pre>récupérer le nb de points d'un utilisateur via son email</pre><br>
+    <form action='/add10points' method='post'>post/add10points : 
+        <input type="email" name="email" placeholder="email" value="andres@a.com">
+        <input type="submit" value="ok">
+        <pre>Ajouter 10 points à un utilisateur via email</pre>
+    </form>
     `);
     
 })
@@ -107,6 +114,38 @@ app.get('/liste_adresses', async (req,res) => {
     res.send(data)
 })
 
+app.post('/add10points', async (req,res) => {
+    console.log('/add10points');
+    const { email } = req.body;
+    if((email != undefined) && (email != '')){
+        new Promise(function(resolve,reject){
+            let mySqlClient = createConnection(mysql);
+            let selectQuery = `CALL add_10_points('${escape(email)}')`;
+            mySqlClient.query(      //execution de la requête
+                selectQuery,
+                function select(error, results) {
+                    if (error) {                                //ERROR
+                        console.log('error SQL :',error);
+                        mySqlClient.end();
+                        reject(error,selectQuery)
+                    }else{
+                        mySqlClient.end();
+                        resolve()
+                    }
+                }
+            );
+        }).then(function(){
+            console.log({"success":true})
+            res.send({"success":true})
+        }).catch(function(error,selectQuery){
+            console.log(error,selectQuery);
+            res.send({"success":false,"msg":error})
+        })
+    }else{
+        res.send({"success":false,"msg":"email non renseigné"})
+    }
+})
+
 app.post('/geo_json_by_name', async (req,res) => {
     console.log('/geo_json_by_name');
     const { nom } = req.body;
@@ -120,6 +159,7 @@ app.post('/geo_json_by_name', async (req,res) => {
     }
 })
 
+
 app.get('/geo_json_all', async (req,res) => {
     console.log('/geo_json_all');
     var options = {
@@ -132,6 +172,41 @@ app.get('/geo_json_all', async (req,res) => {
         tabRes.push(element.geometry.coordinates)
     })
     res.send(tabRes)
+})
+
+app.get('/points', async (req,res) => {
+    console.log(req._parsedOriginalUrl.path)
+    const { email } = req.query;
+    if((email != undefined) && (email != '')){
+        new Promise(function(resolve,reject){
+            let mySqlClient = createConnection(mysql);
+            let selectQuery = `SELECT points_Uti FROM utilisateur WHERE Email_Uti='${escape(email)}'`;
+            mySqlClient.query(      //execution de la requête
+                selectQuery,
+                function select(error, results) {
+                    if (error) {                                //ERROR
+                        console.log('error SQL :',error);
+                        mySqlClient.end();
+                        reject(error,selectQuery)
+                    }
+                    mySqlClient.end();
+                    if ( results.length > 0 )  {
+                        resolve(results[0])
+                    } else {
+                        reject("Pas de donnée ",selectQuery)
+                    }
+                }
+            );
+        }).then(function(result){
+            console.log({"success":true,"points":result.points_Uti})
+            res.send({"success":true,"points":result.points_Uti})
+        }).catch(function(error,selectQuery){
+            console.log(error,selectQuery);
+            res.send({"success":false,"msg":error})
+        })
+    }else{
+        res.send({"success":false,"msg":"email non renseigné"})
+    }
 })
 
 app.get('/qr_code', async (req,res) => {
