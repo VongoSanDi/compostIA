@@ -1,10 +1,25 @@
 <template>
 <v-container>
+  <v-alert
+    v-if="invalidCreation"
+    type="error"
+    dismissible
+    @input="fermeAlerte">
+      Mauvais identifiants
+  </v-alert>
     <v-row no-gutters>
       <v-col
         md="6"
-        offset-md="3">
+        offset-md="3"
+      >
+      <v-img
+        src="../assets/compostia1.png"
+        max-width="170"
+        class="mx-auto mt-4"
+      ></v-img>
+      <div class="text-center mt-3">Inscription</div>
         <v-form v-model="valid">
+          <v-row justify="space-around">
           <v-radio-group
             v-model="radioGroupTypeProfil"
             row
@@ -18,22 +33,35 @@
               value="collectivite"
             ></v-radio>
           </v-radio-group>
-          <v-text-field
+          </v-row>
+          <v-row>
+            <v-col
+            cols="12"
+            sm="6"
+          >
+            <v-text-field
             v-model="nom"
             :rules="ruleIdentite"
             label="Nom"
             required
           ></v-text-field>
+          </v-col>
+          <v-col
+            cols="12"
+            sm="6"
+          >
           <v-text-field
             v-model="prenom"
             :rules="ruleIdentite"
             label="Prénom"
             required
           ></v-text-field>
+          </v-col>
+          </v-row>
           <v-text-field
             v-if="radioGroupTypeProfil == 'collectivite'"
-            v-model="codeMairie"
-            :rules="ruleCodeMairie"
+            v-model="codeInscription"
+            :rules="ruleCodeInscription"
             label="Code d'inscription"
             required
           ></v-text-field>
@@ -59,20 +87,25 @@
           <v-text-field
             v-model="motDePasse"
             type="password"
-            :rules="[ruleMotDePasse.requis]"
+            :rules="[ruleMotDePasse.requis, ruleMotDePasse.min]"
             label="Mot de passe"
             required
           ></v-text-field>
           <v-text-field
             v-model="confirmerMotDePasse"
             type="password"
-            :rules="[ruleMotDePasse.requis, ruleMotDePasse.passwordMatch]"
+            :rules="[ruleMotDePasse.requis, ruleMotDePasse.passwordMatch, ruleMotDePasse.min]"
             label="Confirmer le mot de passe"
             required
           ></v-text-field>
+          <v-checkbox
+            v-model="acceptCGU"
+            label="Acceptez-vous les Conditions Générales d'Utilisations"
+            :rules="ruleCGU"
+          ></v-checkbox>
           <v-btn
             :disabled="!valid"
-            @click="register">
+            @click="inscription">
             S'inscrire
           </v-btn>
         </v-form>
@@ -99,8 +132,10 @@ export default {
     motDePasse: null,
     confirmerMotDePasse: null,
     listeMairies: [],
-    codeMairie: null,
-    mairieSelected: null
+    codeInscription: null,
+    mairieSelected: null,
+    acceptCGU: false,
+    invalidCreation: false
   }),
   computed: {
     ruleIdentite() {
@@ -117,7 +152,7 @@ export default {
     ruleMotDePasse() {
       return {
         requis: v => !!v || "Mot de passe requis",
-       // min: v => v.length >= 8 || "Le mot de passe avoir 8 caractères minimum",
+        min: v => v.length >= 8 || "Le mot de passe avoir 8 caractères minimum",
         passwordMatch: () => this.motDePasse === this.confirmerMotDePasse || "Le mot de passe ne correspond pas"
       }
     },
@@ -126,31 +161,50 @@ export default {
         v => !!v ||"Vous devez sélectionner au moins une mairie"
       ]
     },
-    ruleCodeMairie() {
+    ruleCodeInscription() {
       return [
         v => !!v ||"Champ obligatoire"
+      ]
+    },
+    ruleCGU() {
+      return [
+        v => !!v ||"Vous devez acceptez les Conditions Générales d'Utilisations"
       ]
     }
   },
   methods: {
-    register() {
-      alert("S'enregistrer")
-      this.$refs.form.validate()
-    },
     async getListeMairies () {
       const reponse = await getAllMairies()
-      console.log("reponse getListeMairies", reponse)
       this.listeMairies = reponse.data 
     },
     async inscription() {
       const user = {
-        typeutilisateur: this.radioGroupTypeProfil,
+        typeUtilisateur: this.radioGroupTypeProfil,
         nom: this.nom,
         prenom: this.prenom,
+        email: this.email,
         motDePasse: this.motDePasse,
-        mairie: this.mairieSelected ? this.mairieSelected : null
+        mairie: this.mairieSelected ? this.mairieSelected.insee : null,
+        acceptCGU: this.acceptCGU,
+        codeInscription: this.codeInscription ? this.codeInscription : null
       }
       const reponse = await postInscription(user)
+      if (reponse.data.success) {
+        const infoUtilisateur = {
+          nom: user.nom,
+          prenom: user.prenom,
+          email: user.email,
+        }
+        this.$store.commit("updateInfoUtilisateur", infoUtilisateur)
+        console.log("getters", this.$store.getters.infoUtilisateurGetters)
+        //this.$router.push({name: "Login"})
+        this.$router.push({name: "Dashboard"})
+      } else {
+        this.invalidConnection = true
+      }
+    },
+    fermeAlerte() {
+      this.invalidConnection = !this.invalidConnection
     }
   }
 }

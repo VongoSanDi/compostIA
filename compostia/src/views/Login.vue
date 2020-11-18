@@ -1,55 +1,62 @@
 <template>
-<v-container>
-  <v-row no-gutters>
+  <v-container>
+    <v-alert
+      v-if="invalidConnection"
+      type="error"
+      dismissible
+      @input="fermeAlerte">
+        Mauvais identifiants
+    </v-alert>
+    <v-row no-gutters>
       <v-col
         md="6"
-        offset-md="3"
-      >
-  <v-form
-    ref="form"
-    v-model="valid"
-    class="text-center"
-  >
-   {{"jean.dupont@gmail.com"}}
-   {{"Testing123"}}
-    <v-text-field
-      v-model="email"
-      :rules="emailRules"
-      label="E-mail"
-      id="email"
-      required
-    ></v-text-field>
-    <v-text-field
-       v-model="password"
-       name="password"
-       :append-icon="show1 ? 'mdi-eye' : 'mdi-eye-off'"
-       :rules="[passwordRules.required]"
-       :type="show1 ? 'text' : 'password'"
-       label="Mot de passe"
-       @click:append="show1 = !show1"
-       id="password"
-       required
-    ></v-text-field>
-    <v-btn
-      :disabled="!valid"
-      color="success"
-      class="mr-4 text-center"
-      @click="submit"
-    >
-      Connexion
-    </v-btn>
-    <div class="text-center mt-3" ><a> Mot de passe oublié ? </a></div>
-    
-
-  </v-form>
-  <div class="text-center mt-5"><p>Pas encore inscrit ? alors Ntm</p>
-      <v-btn
-      :to="{name: 'Register'}"
-      >Register
-      </v-btn></div>
-
-  </v-col>
-  </v-row> 
+        offset-md="3">
+        <v-img
+          src="../assets/compostia1.png"
+          max-width="200"
+          class="mx-auto mt-4"
+        ></v-img>
+      <div class="text-center mt-3">Connexion</div>
+        <v-form
+          v-model="valid"
+          ref="form"
+          class="text-center"
+        >
+          <v-text-field
+            v-model="email"
+            :rules="emailRules"
+            label="E-mail"
+            required
+          ></v-text-field>
+          <v-text-field
+            v-model="password"
+            name="password"
+            :append-icon="show1 ? 'mdi-eye' : 'mdi-eye-off'"
+            :rules="[passwordRules.required, passwordRules.min]"
+            :type="show1 ? 'text' : 'password'"
+            label="Mot de passe"
+            @click:append="show1 = !show1"
+            required
+          ></v-text-field>
+          <v-btn
+            :disabled="!valid"
+            color="success"
+            class="mr-4 text-center"
+            @click="submit"
+            > Connexion
+          </v-btn>
+          <v-btn
+          > Mot de passe oublié ?
+          </v-btn>
+          <v-btn
+            :to="{name: 'Register'}"
+          > Pas encore inscrit ?
+          </v-btn>
+        </v-form>
+        <!-- <div class="text-center mt-3" ><a> Mot de passe oublié ? </a></div> -->
+        <!-- <div class="text-center mt-5"><a>Pas encore inscrit ?</a></div> -->
+    </v-col>
+    </v-row> 
   </v-container>
 </template>
 
@@ -61,7 +68,8 @@ import { loginUser } from '../services/LoginService'
       valid: false,
       password:null,
       email: null,
-      show1: false
+      show1: false,
+      invalidConnection: false
     }),
     computed: {
       emailRules() {
@@ -73,18 +81,26 @@ import { loginUser } from '../services/LoginService'
       passwordRules() {
         return {
           required: value => !!value || 'Requis.',
-          //min: v => v.length >= 8 || '8 caractères minimum'
+          min: v => v.length >= 8 || '8 caractères minimum'
         }
       }
     },
     methods: {
       async submit () {
-        const data = { email: this.email, password: this.password }
-        //this.$refs.form.validate()
-        const reponse = await loginUser(data);
-        console.log("submit", reponse);
-        
+        const user = { email: this.email, password: this.password }
+
+        const reponse = await loginUser(user);
+        if (reponse.data == true) {
+          this.$store.commit('authentification', true)
+          console.log('store', this.$store)
+          this.$router.push({name: 'Dashboard'})
+        } else {
+          this.invalidConnection = true
+        }
+      },
+      fermeAlerte() {
+        this.invalidConnection = !this.invalidConnection
       }
-    },
+    }
   }
 </script>

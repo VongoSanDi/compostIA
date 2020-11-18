@@ -7,6 +7,18 @@ const path = require('path');
 
 var cors = require('cors')
 
+/**
+ * Codes d'inscriptions dispo :
+ * 
+ * DECINES-CHARPIEU     69275       741852963
+ * SAINT-PRIEST         69290       965487123
+ * GIVORS               69091       154872369
+ * SAINTE-FOY-LES-LYON  69202       325418769
+ * LYON 7EME            69387       215496387
+ * LYON 7EME            69387       145236902
+ * LYON 7EME            69387       365147820
+ * LYON 7EME            69387       102020140
+ */
 
 const TWO_HOURS = 1000 * 60 * 60 * 2;
 
@@ -28,12 +40,14 @@ app.use(express.static(path.join(__dirname, '../compostia/dist')));
 app.use(cors())
 app.set('trust proxy', true)
 
+
 /*************  GET  **************/
 
 app.get('/', (req,res) => {
     console.log('/');
     //console.log(path.join(__dirname, '../compostia/public/index.html'));
-    res.sendFile(path.join(__dirname, '../compostia/build/index.html'));
+    //res.sendFile(path.join(__dirname, '../compostia/build/index.html'));
+    res.redirect('/help')
 })
 
 app.get('/help',  (req,res) => {
@@ -48,12 +62,13 @@ app.get('/help',  (req,res) => {
         <input type="submit" value="ok">
     </form>
     <a href='/liste_communes'>get/liste_communes</a><pre>La liste des communes et arrondissement de lyon</pre><br>
-    `)
+    <a href='/qr_code?email=andres@a.com'>get/qr_code</a><pre>récupérer le qrcode d'un utilisateur via son email</pre><br>
+    `);
     
 })
 
 //retourne un tableau avec toutes les communes de grand lyon et arrondissements de lyon
-app.get('/api/liste_communes', async (req,res) => {
+app.get('/liste_communes', async (req,res) => {
     console.log('/liste_communes');
     var options = [
         {
@@ -74,7 +89,6 @@ app.get('/api/liste_communes', async (req,res) => {
             tabRes.push({"nom":element2.nom,"insee":element2.insee})
         })
     })
-    console.log('tabRes', tabRes)
     res.send(tabRes)
 })
 
@@ -120,19 +134,136 @@ app.get('/geo_json_all', async (req,res) => {
     res.send(tabRes)
 })
 
+app.get('/qr_code', async (req,res) => {
+    console.log(req._parsedOriginalUrl.path)
+    const { email } = req.query;
+    if((email != undefined) && (email != '')){
+        new Promise(function(resolve,reject){
+            let mySqlClient = createConnection(mysql);
+            let selectQuery = `SELECT QRCode_Uti FROM utilisateur WHERE Email_Uti='${escape(email)}'`;
+            mySqlClient.query(      //execution de la requête
+                selectQuery,
+                function select(error, results) {
+                    if (error) {                                //ERROR
+                        console.log('error SQL :',error);
+                        mySqlClient.end();
+                        reject(error,selectQuery)
+                    }
+                    mySqlClient.end();
+                    if ( results.length > 0 )  {
+                        resolve(results[0])
+                    } else {
+                        reject("Pas de donnée ",selectQuery)
+                    }
+                }
+            );
+        }).then(function(result){
+            console.log({"success":true,"qrcode":result.QRCode_Uti})
+            res.send({"success":true,"qrcode":result.QRCode_Uti})
+        }).catch(function(error,selectQuery){
+            console.log(error,selectQuery);
+            res.send({"success":false,"msg":error})
+        })
+    }else{
+        res.send({"success":false,"msg":"email non renseigné"})
+    }
+})
+
+
 
 /********  REGISTER  *********/
 
 app.post('/register', (req, res) =>{
-    console.log(req.body)
-    //const { , codeMairie, arrondissement, nom, prenom, email, password } = req.body
+    console.log('/register')
+    const { typeUtilisateur,nom,prenom,email,motDePasse,mairie,acceptCGU,codeInscription } = req.body;
+    if(acceptCGU && (email!=undefined)){
+        if(typeUtilisateur=='particulier'){
+            new Promise(function(resolve,reject){
+                let mySqlClient = createConnection(mysql);
+                let selectQuery = `CALL Inscription_Uti('${escape(motDePasse)}','${escape(nom)}','${escape(prenom)}','${escape(email)}',1,'','')`;
+                mySqlClient.query(      //execution de la requête
+                    selectQuery,
+                    function select(error, results) {
+                        if (error) {                                //ERROR
+                            console.log('error SQL :',error);
+                            mySqlClient.end();
+                            reject(error,selectQuery)
+                        }else{
+                            mySqlClient.end();
+                            resolve()
+                        }
+                    }
+                );
+            }).then(function(){
+                res.send({"success":true})
+            }).catch(function(error,selectQuery){
+                console.log(error,selectQuery);
+                res.send({"success":false,"msg":error})
+            })
+        }else if((typeUtilisateur=='collectivite') && ((codeInscription!=undefined) && (codeInscription!='')) && ((mairie!=undefined) && (mairie!=''))){
+            new Promise(function(resolve,reject){
+                let mySqlClient = createConnection(mysql);
+                let selectQuery = `CALL CheckCode('${escape(mairie)}',${escape(codeInscription)})`;
+                mySqlClient.query(      //execution de la requête
+                    selectQuery,
+                    function select(error, results) {
+                        if (error) {                                //ERROR
+                            console.log('error SQL :',error);
+                            mySqlClient.end();
+                            reject(error,selectQuery)
+                        }
+                        mySqlClient.end();
+                        if ( results.length > 0 )  {
+                            resolve(results[0][0])
+                        } else {
+                            reject("Pas de donnée ",selectQuery)
+                        }
+                        
+
+                    }
+                );
+            }).then(function(resultCode){
+                if(resultCode.res==1){
+                    new Promise(function(resolve,reject){
+                        let mySqlClient = createConnection(mysql);
+                        let selectQuery = `CALL Inscription_Uti('${escape(motDePasse)}','${escape(nom)}','${escape(prenom)}','${escape(email)}',1,'${typeUtilisateur}','${mairie}')`;
+                        console.log(selectQuery)
+                        mySqlClient.query(      //execution de la requête
+                            selectQuery,
+                            function select(error, results) {
+                                if (error) {                                //ERROR
+                                    console.log('error SQL :',error);
+                                    mySqlClient.end();
+                                    reject(error,selectQuery)
+                                }else{
+                                    mySqlClient.end();
+                                    resolve()
+                                }
+                            }
+                        );
+                    }).then(function(){
+                        res.send({"success":true})
+                    }).catch(function(error,selectQuery){
+                        console.log(error,selectQuery);
+                        res.send({"success":false,"msg":error})
+                    })
+                }else{
+                    res.send({"success":false,"msg":"Code d'inscription en tant que membre collectivité incorrect."})
+                }
+            }).catch(function(error,selectQuery){
+                console.log(error,selectQuery);
+                res.send({"success":false,"msg":error})
+            })
+        }else{
+            res.send({"success":false,"msg":"Code d'inscription ou Mairie non renseigné"})
+        }
+    }
 })
 
 /********  LOGIN  *********/
 
 app.post('/login', (req, res) =>{
     console.log('/login');
-    console.log('req', req)
     const { email, password } = req.body
     console.log({ email, password });
     if((email != undefined)||(password != undefined)){
@@ -148,12 +279,12 @@ app.post('/login', (req, res) =>{
                         mySqlClient.end();
                         reject(error,selectQuery)
                     }
+                    mySqlClient.end();
                     if ( results.length > 0 )  {
                         resolve(results[0])
                     } else {
                         reject("Pas de donnée ",selectQuery)
                     }
-                    mySqlClient.end();
                 }
             );
         }).then(function(result){
