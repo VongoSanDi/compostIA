@@ -64,7 +64,7 @@ app.get('/help',  (req,res) => {
     </form>
     <a href='/liste_communes'>get/liste_communes</a><pre>La liste des communes et arrondissement de lyon</pre><br>
     <a href='/qr_code?email=andres@a.com'>get/qr_code</a><pre>récupérer le qrcode d'un utilisateur via son email</pre><br>
-    <a href='/points?email=a@dsf.co'>get/points</a><pre>récupérer le nb de points d'un utilisateur via son email</pre><br>
+    <a href='/points?email=andres@a.com'>get/points</a><pre>récupérer le nb de points d'un utilisateur via son email</pre><br>
     <form action='/add10points' method='post'>post/add10points : 
         <input type="email" name="email" placeholder="email" value="andres@a.com">
         <input type="submit" value="ok">
@@ -117,33 +117,8 @@ app.get('/liste_adresses', async (req,res) => {
 app.post('/add10points', async (req,res) => {
     console.log('/add10points');
     const { email } = req.body;
-    if((email != undefined) && (email != '')){
-        new Promise(function(resolve,reject){
-            let mySqlClient = createConnection(mysql);
-            let selectQuery = `CALL add_10_points('${escape(email)}')`;
-            mySqlClient.query(      //execution de la requête
-                selectQuery,
-                function select(error, results) {
-                    if (error) {                                //ERROR
-                        console.log('error SQL :',error);
-                        mySqlClient.end();
-                        reject(error,selectQuery)
-                    }else{
-                        mySqlClient.end();
-                        resolve()
-                    }
-                }
-            );
-        }).then(function(){
-            console.log({"success":true})
-            res.send({"success":true})
-        }).catch(function(error,selectQuery){
-            console.log(error,selectQuery);
-            res.send({"success":false,"msg":error})
-        })
-    }else{
-        res.send({"success":false,"msg":"email non renseigné"})
-    }
+    let request = `CALL add_10_points('${escape(email)}')`;
+    res.send(await requeteClassiqueSansRetour(email,request));
 })
 
 app.post('/geo_json_by_name', async (req,res) => {
@@ -177,71 +152,15 @@ app.get('/geo_json_all', async (req,res) => {
 app.get('/points', async (req,res) => {
     console.log(req._parsedOriginalUrl.path)
     const { email } = req.query;
-    if((email != undefined) && (email != '')){
-        new Promise(function(resolve,reject){
-            let mySqlClient = createConnection(mysql);
-            let selectQuery = `SELECT points_Uti FROM utilisateur WHERE Email_Uti='${escape(email)}'`;
-            mySqlClient.query(      //execution de la requête
-                selectQuery,
-                function select(error, results) {
-                    if (error) {                                //ERROR
-                        console.log('error SQL :',error);
-                        mySqlClient.end();
-                        reject(error,selectQuery)
-                    }
-                    mySqlClient.end();
-                    if ( results.length > 0 )  {
-                        resolve(results[0])
-                    } else {
-                        reject("Pas de donnée ",selectQuery)
-                    }
-                }
-            );
-        }).then(function(result){
-            console.log({"success":true,"points":result.points_Uti})
-            res.send({"success":true,"points":result.points_Uti})
-        }).catch(function(error,selectQuery){
-            console.log(error,selectQuery);
-            res.send({"success":false,"msg":error})
-        })
-    }else{
-        res.send({"success":false,"msg":"email non renseigné"})
-    }
+    let request = `SELECT points_Uti FROM utilisateur WHERE Email_Uti='${escape(email)}'`;
+    res.send(await requeteClassiqueAvecRetour(email,request,'points_Uti'));
 })
 
 app.get('/qr_code', async (req,res) => {
     console.log(req._parsedOriginalUrl.path)
     const { email } = req.query;
-    if((email != undefined) && (email != '')){
-        new Promise(function(resolve,reject){
-            let mySqlClient = createConnection(mysql);
-            let selectQuery = `SELECT QRCode_Uti FROM utilisateur WHERE Email_Uti='${escape(email)}'`;
-            mySqlClient.query(      //execution de la requête
-                selectQuery,
-                function select(error, results) {
-                    if (error) {                                //ERROR
-                        console.log('error SQL :',error);
-                        mySqlClient.end();
-                        reject(error,selectQuery)
-                    }
-                    mySqlClient.end();
-                    if ( results.length > 0 )  {
-                        resolve(results[0])
-                    } else {
-                        reject("Pas de donnée ",selectQuery)
-                    }
-                }
-            );
-        }).then(function(result){
-            console.log({"success":true,"qrcode":result.QRCode_Uti})
-            res.send({"success":true,"qrcode":result.QRCode_Uti})
-        }).catch(function(error,selectQuery){
-            console.log(error,selectQuery);
-            res.send({"success":false,"msg":error})
-        })
-    }else{
-        res.send({"success":false,"msg":"email non renseigné"})
-    }
+    let request = `SELECT QRCode_Uti FROM utilisateur WHERE Email_Uti='${escape(email)}'`;
+    res.send(await requeteClassiqueAvecRetour(email,request,'QRCode_Uti'));
 })
 
 
@@ -419,6 +338,69 @@ function createConnection(){
 
 function escape(str){
     return str.replace(/'|\\'/g, "\\'")
+}
+
+function requeteClassiqueSansRetour(email,requete){
+    if((email != undefined) && (email != '')){
+        return new Promise(function(resolve,reject){
+            let mySqlClient = createConnection(mysql);
+            let selectQuery = requete;
+            mySqlClient.query(      //execution de la requête
+                selectQuery,
+                function select(error, results) {
+                    if (error) {                                //ERROR
+                        console.log('error SQL :',error);
+                        mySqlClient.end();
+                        reject(error,selectQuery)
+                    }else{
+                        mySqlClient.end();
+                        resolve()
+                    }
+                }
+            );
+        }).then(function(){
+            console.log({"success":true})
+            return {"success":true}
+        }).catch(function(error,selectQuery){
+            console.log(error,selectQuery);
+            return {"success":false,"msg":error}
+        })
+    }else{
+        return {"success":false,"msg":"email non renseigné"}
+    }
+}
+
+function requeteClassiqueAvecRetour(email,requete,returnName){
+    if((email != undefined) && (email != '')){
+        return new Promise(function(resolve,reject){
+            let mySqlClient = createConnection(mysql);
+            let selectQuery = requete;
+            mySqlClient.query(      //execution de la requête
+                selectQuery,
+                function select(error, results) {
+                    if (error) {                                //ERROR
+                        console.log('error SQL :',error);
+                        mySqlClient.end();
+                        reject(error,selectQuery)
+                    }
+                    mySqlClient.end();
+                    if ( results.length > 0 )  {
+                        resolve(results[0])
+                    } else {
+                        reject("Pas de donnée ",selectQuery)
+                    }
+                }
+            );
+        }).then(function(result){
+            console.log({"success":true,"points":result[returnName]})
+            return {"success":true,"points":result[returnName]}
+        }).catch(function(error,selectQuery){
+            console.log(error,selectQuery);
+            return {"success":false,"msg":error}
+        })
+    }else{
+        return {"success":false,"msg":"email non renseigné"}
+    }
 }
 /*
 
