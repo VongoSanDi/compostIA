@@ -5,9 +5,12 @@
   >
   <v-card-title>
     <i class="fa fa-leaf"></i>
+    <div style="margin-left:10px">Dupont Jean</div>
     </v-card-title>
     <v-card-text>
-      {{nombrePoints}} points
+      <div style="font-size:20px">
+        {{nombrePoints}} points
+      </div>
     </v-card-text>
   </v-card>
 </template>

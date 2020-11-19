@@ -5,10 +5,13 @@ import router from './router'
 import store from './store'
 import vuetify from './plugins/vuetify';
 import axios from 'axios';
+import Slider from '@jeremyhamm/vue-slider'
 
 Vue.config.productionTip = false
 
 Vue.prototype.$http = axios
+
+Vue.use(Slider)
 
 new Vue({
   router,
