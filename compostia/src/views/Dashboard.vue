@@ -12,19 +12,22 @@
         {'id': 2, 'text': 'Mes avantages', 'url': 'https://github.com'},
         {'id': 3, 'text': 'Mon compte', 'url': 'https://github.com'},
         {'id': 4, 'text': 'Paramètres', 'url': 'https://github.com'},
-        {'id': 5, 'text': 'Information', 'url': 'https://github.com'}]"
+        {'id': 5, 'text': 'Information', 'url': 'https://github.com'},
+        {'id': 6, 'text': 'Déconnexion', 'url': 'https://github.com'}]"
     ></slider>
     </v-row>
     <v-row no-gutters space-around>
       <v-col
         cols="8"
-        sm="6"
+        md="6"
+        xs="12"
       >
         <DashboardTotalPoints/>
       </v-col>
       <v-col
         cols="4"
-        sm="6"
+        md="6"
+        xs="0"
       >
         <DashboardQRCode/>
       </v-col>

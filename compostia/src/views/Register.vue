@@ -108,6 +108,11 @@
             @click="inscription">
             S'inscrire
           </v-btn>
+          <v-btn
+            style="margin-top:10px"
+            :to="{name: 'Login'}"
+          > Vous avez déjà un compte ?
+          </v-btn>
         </v-form>
       </v-col>
     </v-row>
