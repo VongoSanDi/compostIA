@@ -17,7 +17,7 @@
         max-width="170"
         class="mx-auto mt-4"
       ></v-img>
-      <div class="text-center mt-3">Inscription</div>
+      <h1 class="text-center mt-3">Inscription</h1>
         <v-form v-model="valid">
           <v-row justify="space-around">
           <v-radio-group
@@ -109,11 +109,6 @@
             S'inscrire
           </v-btn>
         </v-form>
-        <v-btn
-          :to="{name: 'Dashboard'}"
-        >
-        Dashboard
-        </v-btn>
       </v-col>
     </v-row>
   </v-container>
@@ -168,7 +163,7 @@ export default {
     },
     ruleCGU() {
       return [
-        v => !!v ||"Vous devez acceptez les Conditions Générales d'Utilisations"
+        v => !!v ||"Vous devez accepter les Conditions Générales d'Utilisations"
       ]
     }
   },
@@ -196,9 +191,7 @@ export default {
           email: user.email,
         }
         this.$store.commit("updateInfoUtilisateur", infoUtilisateur)
-        console.log("getters", this.$store.getters.infoUtilisateurGetters)
-        //this.$router.push({name: "Login"})
-        this.$router.push({name: "Dashboard"})
+        this.$router.push({name: "Login"})
       } else {
         this.invalidConnection = true
       }

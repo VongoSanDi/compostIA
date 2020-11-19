@@ -1,19 +1,9 @@
 <template>
-  <v-card
-    class="mx-auto"
-    max-width="344"
-  >
+  <v-card>
   <v-img
-    :src="imageData"></v-img>
-    <img [src]="imageData" class="img-thumbnail">
-  <v-card-title>
-      QR Code
-    </v-card-title>
-    <v-card-actions>
-      <v-btn
-        @click="readQRCode"
-      > lire</v-btn>
-    </v-card-actions>
+    :src="imageData"
+     max-height="100"
+    max-width="100"></v-img>
   </v-card>
 </template>
 
@@ -27,26 +17,14 @@ export default {
   }),
   async mounted (){
     this.qrCode = await sendMailToBackForQrCode()
-    console.log("a")
+    await this.readQRCode()
   },
   methods: {
     async readQRCode() {
-      console.log("qrcode",this.qrCode)
       const reponse = await searchRQCode(this.qrCode)
-      console.log("reponse readQRCode",reponse)
-
-      const rawResponse = reponse.data
-      const b64Response = btoa(this.toBinary(rawResponse));
-      console.log("b64Response", b64Response)
-      this.imageData = 'data:image/png;base64,' + b64Response;
-      console.log("imageData", this.imageData)
-    },
-    toBinary(string) {
-      const codeUnits = new Uint16Array(string.length);
-      for (let i = 0; i < codeUnits.length; i++) {
-        codeUnits[i] = string.charCodeAt(i);
-      }
-      return String.fromCharCode(...new Uint8Array(codeUnits.buffer));
+      console.log("qrCode1", this.qrCode)
+      console.log("qrCode2", reponse)
+      this.imageData = 'https://api.qrserver.com/v1/create-qr-code/?data='+this.qrCode
     }
   }
 }

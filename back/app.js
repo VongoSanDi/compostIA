@@ -41,7 +41,6 @@ app.use(cors())
 app.set('trust proxy', true)
 
 
-/*************  GET  **************/
 
 app.get('/', (req,res) => {
     console.log('/');
@@ -66,13 +65,21 @@ app.get('/help',  (req,res) => {
     <a href='/qr_code?email=andres@a.com'>get/qr_code</a><pre>récupérer le qrcode d'un utilisateur via son email</pre><br>
     <a href='/points?email=andres@a.com'>get/points</a><pre>récupérer le nb de points d'un utilisateur via son email</pre><br>
     <form action='/add10points' method='post'>post/add10points : 
-        <input type="email" name="email" placeholder="email" value="andres@a.com">
+        <input type="text" name="qrcode" placeholder="qrcode" value="61366530343039362D323938392D3131">
         <input type="submit" value="ok">
-        <pre>Ajouter 10 points à un utilisateur via email</pre>
+        <pre>Ajouter 10 points à un utilisateur via qrcode</pre>
+    </form>
+    <form action='/substractXPoints' method='post'>post/substractXPoints : 
+        <input type="text" name="qrcode" placeholder="qrcode" value="61366530343039362D323938392D3131">
+        <input type="number" name="points" placeholder="points" value="10">
+        <input type="submit" value="ok">
+        <pre>Supprimer X points à un utilisateur via qrcode</pre>
     </form>
     `);
     
 })
+
+/**************** LISTES ***************/
 
 //retourne un tableau avec toutes les communes de grand lyon et arrondissements de lyon
 app.get('/liste_communes', async (req,res) => {
@@ -96,10 +103,13 @@ app.get('/liste_communes', async (req,res) => {
             tabRes.push({"nom":element2.nom,"insee":element2.insee})
         })
     })
+    let indexTab = tabRes.findIndex((element) => element.nom == 'LYON')
+    tabRes.splice(indexTab,1)
     res.send(tabRes)
 })
 
 
+//retourne une liste avec les adresses de tous les composteurs "Quartiers"
 app.get('/liste_adresses', async (req,res) => {
     console.log('/liste_adresses');
     const { page='1', itemPerPage='20' } = req.query;
@@ -111,15 +121,44 @@ app.get('/liste_adresses', async (req,res) => {
         path: `/ws/grandlyon/gip_proprete.gipcomposteur_latest/all.json?maxfeatures=${iItemPerPage}&start=${itemStart}`
     };
     const data = JSON.parse(await getFromGrandLyonAPI(options));
-    res.send(data)
+    res.send(data.values)
 })
+
+/**************** GESTION POINTS *****************/
 
 app.post('/add10points', async (req,res) => {
     console.log('/add10points');
-    const { email } = req.body;
-    let request = `CALL add_10_points('${escape(email)}')`;
-    res.send(await requeteClassiqueSansRetour(email,request));
+    const { qrcode } = req.body;
+    let request = `CALL add_10_points('${escape(qrcode)}')`;
+    res.send(await requeteClassiqueSansRetour(qrcode,request));
 })
+
+app.get('/points', async (req,res) => {
+    console.log(req._parsedOriginalUrl.path)
+    const { email } = req.query;
+    let request = `SELECT points_Uti FROM utilisateur WHERE Email_Uti='${escape(email)}'`;
+    res.send(await requeteClassiqueAvecRetour(email,request,'points_Uti','points'));
+})
+
+app.post('/substractXPoints', async (req,res) => {
+    console.log('/substractXPoints');
+    const { qrcode, points } = req.body;
+    console.log({ qrcode, points })
+    let request = `CALL subtract_x_points('${escape(qrcode)}',${points})`;
+    console.log(request)
+    res.send(await requeteClassiqueAvecRetour(qrcode,request,'res'));
+})
+
+/**************** QRCODE *****************/
+
+app.get('/qr_code', async (req,res) => {
+    console.log(req._parsedOriginalUrl.path)
+    const { email } = req.query;
+    let request = `SELECT QRCode_Uti FROM utilisateur WHERE Email_Uti='${escape(email)}'`;
+    res.send(await requeteClassiqueAvecRetour(email,request,'QRCode_Uti','qrcode'));
+})
+
+/**************** GEO JSON *****************/
 
 app.post('/geo_json_by_name', async (req,res) => {
     console.log('/geo_json_by_name');
@@ -134,7 +173,6 @@ app.post('/geo_json_by_name', async (req,res) => {
     }
 })
 
-
 app.get('/geo_json_all', async (req,res) => {
     console.log('/geo_json_all');
     var options = {
@@ -144,25 +182,14 @@ app.get('/geo_json_all', async (req,res) => {
     const data = JSON.parse(await getFromGrandLyonAPI(options));
     var tabRes = [];
     data.features.forEach(element => {
-        tabRes.push(element.geometry.coordinates)
+        delete element.properties.infoloc;
+        delete element.properties.typesite;
+        delete element.properties.url;
+        delete element.properties.gid;
+        tabRes.push({"properties":element.properties,"coordinates":[element.geometry.coordinates[1],element.geometry.coordinates[0]]})
     })
     res.send(tabRes)
 })
-
-app.get('/points', async (req,res) => {
-    console.log(req._parsedOriginalUrl.path)
-    const { email } = req.query;
-    let request = `SELECT points_Uti FROM utilisateur WHERE Email_Uti='${escape(email)}'`;
-    res.send(await requeteClassiqueAvecRetour(email,request,'points_Uti'));
-})
-
-app.get('/qr_code', async (req,res) => {
-    console.log(req._parsedOriginalUrl.path)
-    const { email } = req.query;
-    let request = `SELECT QRCode_Uti FROM utilisateur WHERE Email_Uti='${escape(email)}'`;
-    res.send(await requeteClassiqueAvecRetour(email,request,'QRCode_Uti'));
-})
-
 
 
 /********  REGISTER  *********/
@@ -340,8 +367,8 @@ function escape(str){
     return str.replace(/'|\\'/g, "\\'")
 }
 
-function requeteClassiqueSansRetour(email,requete){
-    if((email != undefined) && (email != '')){
+function requeteClassiqueSansRetour(id,requete){
+    if((id != undefined) && (id != '')){
         return new Promise(function(resolve,reject){
             let mySqlClient = createConnection(mysql);
             let selectQuery = requete;
@@ -366,12 +393,12 @@ function requeteClassiqueSansRetour(email,requete){
             return {"success":false,"msg":error}
         })
     }else{
-        return {"success":false,"msg":"email non renseigné"}
+        return {"success":false,"msg":`id non renseigné`}
     }
 }
 
-function requeteClassiqueAvecRetour(email,requete,returnName){
-    if((email != undefined) && (email != '')){
+function requeteClassiqueAvecRetour(id,requete,returnName,nameVal){
+    if((id != undefined) && (id != '')){
         return new Promise(function(resolve,reject){
             let mySqlClient = createConnection(mysql);
             let selectQuery = requete;
@@ -392,14 +419,14 @@ function requeteClassiqueAvecRetour(email,requete,returnName){
                 }
             );
         }).then(function(result){
-            console.log({"success":true,"points":result[returnName]})
-            return {"success":true,"points":result[returnName]}
+            console.log({"success":true, "property": nameVal, "val":result[returnName]})
+            return {"success":true, "property": nameVal, "val":result[returnName]}
         }).catch(function(error,selectQuery){
             console.log(error,selectQuery);
             return {"success":false,"msg":error}
         })
     }else{
-        return {"success":false,"msg":"email non renseigné"}
+        return {"success":false,"msg":"id non renseigné"}
     }
 }
 /*

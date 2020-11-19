@@ -28,13 +28,13 @@ const routes: Array<RouteConfig> = [
     // this generates a separate chunk (Dashboard.[hash].js) for this route
     // which is lazy-loaded when the route is visited.
     component: () => import(/* webpackChunkName: "Dashboard" */ '../views/Dashboard.vue'),
-    /* beforeEnter: (to, from, next) => {
-      if (to.name !== 'Login' && !store.getters.isAuthenticated) {
+    beforeEnter: (to, from, next) => {
+      if (to.name !== 'Login' && !store.getters.authenticatedGetters) {
         next({name: 'Login'})
       } else {
         next()
       }
-    } */
+    }
   }
 ]
 

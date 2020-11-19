@@ -7,14 +7,26 @@
     <i class="fa fa-leaf"></i>
     </v-card-title>
     <v-card-text>
-      1753
+      {{nombrePoints}} points
     </v-card-text>
   </v-card>
 </template>
 
 <script>
+import {getPoints} from '../services/DashboardService'
 export default {
-  name: 'Dashboard_TotalPoints'
+  name: 'Dashboard_TotalPoints',
+  data: () => ({
+    nombrePoints: 0
+  }),
+  mounted() {
+    this.recuperationPoints()
+  },
+  methods: {
+    async recuperationPoints() {
+      this.nombrePoints = await getPoints() >= 0 ? await getPoints() : 0
+    }
+  }
 
 }
 </script>

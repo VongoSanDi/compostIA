@@ -16,7 +16,7 @@
           max-width="200"
           class="mx-auto mt-4"
         ></v-img>
-      <div class="text-center mt-3">Connexion</div>
+      <h1 class="text-center mt-3">Connexion</h1>
         <v-form
           v-model="valid"
           ref="form"
@@ -45,9 +45,9 @@
             @click="submit"
             > Connexion
           </v-btn>
-          <v-btn
+          <!-- <v-btn
           > Mot de passe oublié ?
-          </v-btn>
+          </v-btn> -->
           <v-btn
             :to="{name: 'Register'}"
           > Pas encore inscrit ?
@@ -91,8 +91,11 @@ import { loginUser } from '../services/LoginService'
 
         const reponse = await loginUser(user);
         if (reponse.data == true) {
+          const infoUtilisateur = {
+            email: this.email,
+          }
           this.$store.commit('authentification', true)
-          console.log('store', this.$store)
+          this.$store.commit("updateInfoUtilisateur", infoUtilisateur)
           this.$router.push({name: 'Dashboard'})
         } else {
           this.invalidConnection = true

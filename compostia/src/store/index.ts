@@ -6,7 +6,8 @@ Vue.use(Vuex)
 export default new Vuex.Store({
   state: {
     isAuthenticated: false,
-    infoUtilisateur: []
+    infoUtilisateur: [],
+    listeSitesCompostes: []
   },
   mutations: {
     authentification(state, value) {
@@ -14,6 +15,9 @@ export default new Vuex.Store({
     },
     updateInfoUtilisateur(state, value) {
       state.infoUtilisateur = value
+    },
+    updateListeSitesCompostes(state, value) {
+      state.listeSitesCompostes = value
     }
   },
   actions: {
@@ -24,6 +28,9 @@ export default new Vuex.Store({
     },
     infoUtilisateurGetters: state => {
       return state.infoUtilisateur
+    },
+    listeSitesCompostesGetters: state => {
+      return state.listeSitesCompostes
     }
   },
   modules: {
